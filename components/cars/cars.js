@@ -2,20 +2,20 @@ const Cars = (props) => {
   const data = props.data;
 
   return (
-    <div>
+    <ul>
       {
         data.map((item) => {
           return (
-            <>
-              <h3>{item.id}</h3>
-              <p>{item.content}</p>
-              <p><small>{item.dateOfReceiving}</small></p>
+            <li key={ item.id }>
+              <h3>{ item.id }</h3>
+              <p>{ item.content }</p>
+              <p><small>{ item.dateOfReceiving }</small></p>
               <hr/>
-            </>
+            </li>
           )
         })
       }
-    </div>
+    </ul>
   )
 }
 

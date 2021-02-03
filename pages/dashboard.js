@@ -1,43 +1,57 @@
-import nookies from 'nookies'
-import fs from 'fs'
-import News from '../components/news/news.js'
-import Discounts from '../components/discounts/discounts.js'
-import Cars from '../components/cars/cars.js'
-import { USER_COOKIE_NAME } from '../const/const.js'
-import { setDateOfReceiving, getCurrentDate, getCurrentUser } from '../helpers/common.js'
-import newsData from '../mocks/news.js'
-import discountsData from '../mocks/discounts.js'
-import carsData from '../mocks/cars.js'
+import nookies from 'nookies';
+import fs from 'fs';
+import Menu from '../components/menu/menu';
+import News from '../components/news/news';
+import Discounts from '../components/discounts/discounts';
+import Cars from '../components/cars/cars';
+import UserComponent from '../components/user-component/user-component';
+import { USER_COOKIE_NAME, UserType } from '../const/const';
+import { setDateOfReceiving, getCurrentDate, getCurrentUser, getUserType } from '../helpers/common';
+import { initializeStore } from '../init/store';
+import { initialDispatcher } from '../init/initialDispatcher';
+import { useSelector, useDispatch } from "react-redux";
+import { userActions } from "../bus/user/actions";
+import newsData from '../mocks/news';
+import discountsData from '../mocks/discounts';
+import carsData from '../mocks/cars';
 
 export const getServerSideProps = async (context) => {
+  const store = await initialDispatcher(context, initializeStore());
   const cookies = nookies.get(context);
   const userId = USER_COOKIE_NAME in cookies ? cookies.userId : null;
+  let userType = UserType.GUEST;
+  let userVisitCounts = 1;
   const dateOfReceiving = getCurrentDate();
   const news = setDateOfReceiving(newsData, dateOfReceiving);
   const discounts = setDateOfReceiving(discountsData, dateOfReceiving);
   const cars = setDateOfReceiving(carsData, dateOfReceiving);
-  let isGuest = false;
-  let isFriend = false;
-  let isFam = false;
 
   try {
     const source = await fs.promises.readFile('./data/users.json', 'utf-8');
     const data = source ? JSON.parse(source) : [];
     const user = getCurrentUser(data, userId);
-    const userVisitCount = data[user].vistCount;
+    data[user].visitCount++;
+    userVisitCounts = data[user].visitCount;
+    userType = getUserType(userVisitCounts);
 
-    isGuest = userVisitCount < 3;
-    isFriend = (userVisitCount >= 3 && userVisitCount < 5);
-    isFam = userVisitCount >= 5;
+    await fs.promises.writeFile('./data/users.json', JSON.stringify(data, null, 4))
   } catch (error) {
       console.error(error.message)
   }
 
+  store.dispatch(userActions.setVisitCounts({
+    userVisitCounts
+  }));
+
+  store.dispatch(userActions.setUserType({
+    userType
+  }));
+
+  const initialReduxState = store.getState();
+
   return {
     props: {
-      isGuest,
-      isFriend,
-      isFam,
+      initialReduxState,
       news,
       discounts,
       cars
@@ -47,26 +61,34 @@ export const getServerSideProps = async (context) => {
 
 const Dashboard = (props) => {
   const {
-    isGuest,
-    isFriend,
-    isFam,
+    initialReduxState,
     news,
     discounts,
     cars
   } = props;
 
-  const guestJSX = isGuest && (
+  console.log('dashboard', initialReduxState);
+
+  const initialUserVisitCounts = initialReduxState.user.userVisitCounts;
+  const initialUserType = initialReduxState.user.userType;
+  const dispatch = useDispatch();
+  dispatch(userActions.setUserType({ userVisitCounts: initialUserVisitCounts }));
+  dispatch(userActions.setVisitCounts({ userType: initialUserType }));
+
+  const { user } = useSelector((state) => state);
+
+  const guestJSX = user.userType === UserType.GUEST && (
     <News data={news} />
   );
 
-  const friendJSX = isFriend && (
+  const friendJSX = user.userType === UserType.FRIEND && (
     <>
       <News data={news} />
       <Discounts data={discounts} />
     </>
   );
 
-  const famJSX = isFam && (
+  const famJSX = user.userType === UserType.FAM && (
     <>
       <News data={news} />
       <Discounts data={discounts} />
@@ -76,6 +98,8 @@ const Dashboard = (props) => {
 
   return (
     <>
+      <Menu />
+      <UserComponent />
       { guestJSX }
       { friendJSX }
       { famJSX }
