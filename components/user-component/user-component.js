@@ -1,28 +1,30 @@
-import { useSelector } from "react-redux";
-import { updateUserType } from '../../helpers/common';
-import { useDispatch } from 'react-redux';
+import { setCookie } from 'nookies';
+import { useSelector, useDispatch } from "react-redux";
 import { userActions } from "../../bus/user/actions";
+import { selectUserId, selectUserVisitCounts, selectUserType } from "../../bus/user/selectors";
+import { updateUserType } from '../../helpers/common';
 
 const UserComponent = () => {
-  const { user } = useSelector((state) => state);
+  console.log('User Component');
   const dispatch = useDispatch();
+  const userId = useSelector(selectUserId);
+  const userVisitCounts = useSelector(selectUserVisitCounts);
+  const userType = useSelector(selectUserType);
 
   const handleUserButtonClick = () => {
-    const updatedUserType = updateUserType(user.userVisitCounts);
-    console.log(updatedUserType);
+    setCookie(null, 'isIncreased', true);
+    const updatedUserType = updateUserType(userType);
 
-    return dispatch(userActions.setUserType({
-      userType: updatedUserType
-    }))
+    dispatch(userActions.setUserType(updatedUserType));
   }
 
   return (
     <>
       <h1>User Info</h1>
       <ul>
-        <li>id: { user.userId }</li>
-        <li>visits: { user.userVisitCounts }</li>
-        <li>type: { user.userType }</li>
+        <li>id: { userId }</li>
+        <li>visits: { userVisitCounts }</li>
+        <li>type: { userType }</li>
       </ul>
       <button 
         onClick={handleUserButtonClick}>

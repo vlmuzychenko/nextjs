@@ -1,5 +1,6 @@
 // Core
 import { useMemo } from 'react';
+import * as R from 'ramda';
 import { composeWithDevTools } from 'redux-devtools-extension';
 import {
   createStore,
@@ -31,27 +32,39 @@ const bindMiddleware = (middleware) => {
   return composeWithDevTools(applyMiddleware(...middleware));
 }
 
-export const initStore = (preloadedState = {}) => {
+export const initStore = (preloadedState) => {
+  console.log('initStore: preloadedState', preloadedState);
+
+  const defaultState = preloadedState ? createStore(rootReducer).getState() : {};
+  const currentState = R.mergeDeepRight(
+    defaultState,
+    preloadedState,
+  );
+
   const sagaMiddleware = createSagaMiddleware();
   const initedStore = createStore(
     rootReducer,
-    preloadedState,
+    currentState,
     bindMiddleware([ sagaMiddleware ]),
   );
 
   initedStore.sagaTask = sagaMiddleware.run(rootSaga);
 
+  console.log('initStore: initedStore.getState()', initedStore.getState());
+
   return initedStore;
 };
 
 export const initializeStore = (preloadedState = {}) => {
+  console.log('initializeStore: preloadedState', preloadedState);
   let initializedStore = store || initStore(preloadedState);
+  console.log('initializeStore: initializedStore.getState()', initializedStore.getState());
 
   if (preloadedState && store) {
-    initializedStore = initStore({
-      ...preloadedState,
-      ...store.getState(),
-    });
+    initializedStore = initStore(R.mergeDeepRight(
+      store.getState(),
+      preloadedState
+    ));
 
     store = undefined;
   }

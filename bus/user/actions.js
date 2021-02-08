@@ -9,7 +9,7 @@ export const userActions = {
   },
   setVisitCounts: (userVisitCounts) => {
     return {
-      type: types.SET_USER_TYPE,
+      type: types.SET_VISIT_COUNTS,
       payload: userVisitCounts,
     }
   },

@@ -1,4 +1,4 @@
-export const USER_COOKIE_NAME = `userId`;
+export const USER_COOKIE_NAME = `user`;
 
 export const UserType = {
   GUEST: `guest`,
