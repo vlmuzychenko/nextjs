@@ -2,18 +2,13 @@ import { UserType } from '../const/const';
 
 export const getUniqueId = () => Math.floor(Math.random() * 1000000);
 
-export const setDateOfReceiving = (data, date) => {
-  data.map(item => {
-    item.dateOfReceiving = date
+export const setDateOfReceiving = (promises, data, fileName) => {
+  const updatedData = data.map((item) => {
+    item.dateOfReceiving = `${new Date()}`;
+    return item;
   });
-
-  return data;
-}
-
-export const getCurrentDate = () => {
-  const date = new Date();
-
-  return date.toDateString();;
+  promises.writeFile(fileName, '');
+  promises.writeFile(fileName, JSON.stringify(updatedData, null, 4));
 }
 
 export const getCurrentUser = (data, userId) => {
@@ -30,10 +25,31 @@ export const getUserType = (visitCount) => {
   }
 }
 
-export const updateUserType = (visitCount) => {
-  if (visitCount < 3) {
+export const updateUserType = (userType) => {
+  if (userType === UserType.GUEST) {
     return UserType.FRIEND;
   } else {
     return UserType.FAM;
   }
+}
+
+export const getParsedFile = (source) => {
+  return source ? JSON.parse(source) : [];
+}
+
+export const getItemById = (arr, id) => {
+  const isCurrentItem = (element, index, array) => {
+    return element.id === id;
+  };
+  const currentIndex = arr.findIndex(isCurrentItem);
+
+  return arr[currentIndex];
+}
+
+export const getSlugIndex = (data, slug) => {
+  return data.findIndex((element, index, array) => {
+    if (element && slug) {
+      return slug === element.id;
+    }
+  });
 }

@@ -1,108 +1,115 @@
-import nookies from 'nookies';
+// Core
 import fs from 'fs';
+import nookies from 'nookies';
+import Link from 'next/link';
+// Components
 import Menu from '../components/menu/menu';
-import News from '../components/news/news';
-import Discounts from '../components/discounts/discounts';
-import Cars from '../components/cars/cars';
 import UserComponent from '../components/user-component/user-component';
-import { USER_COOKIE_NAME, UserType } from '../const/const';
-import { setDateOfReceiving, getCurrentDate, getCurrentUser, getUserType } from '../helpers/common';
+// Reducer
+import { userActions } from "../bus/user/actions";
+import { selectUserId, selectUserVisitCounts, selectUserType } from "../bus/user/selectors";
 import { initializeStore } from '../init/store';
 import { initialDispatcher } from '../init/initialDispatcher';
-import { useSelector, useDispatch } from "react-redux";
-import { userActions } from "../bus/user/actions";
-import newsData from '../mocks/news';
-import discountsData from '../mocks/discounts';
-import carsData from '../mocks/cars';
+// Helpers
+import { setDateOfReceiving, getCurrentUser, getUserType, getParsedFile } from '../helpers/common';
 
 export const getServerSideProps = async (context) => {
   const store = await initialDispatcher(context, initializeStore());
+
+  const promises = fs.promises;
   const cookies = nookies.get(context);
-  const userId = USER_COOKIE_NAME in cookies ? cookies.userId : null;
-  let userType = UserType.GUEST;
-  let userVisitCounts = 1;
-  const dateOfReceiving = getCurrentDate();
-  const news = setDateOfReceiving(newsData, dateOfReceiving);
-  const discounts = setDateOfReceiving(discountsData, dateOfReceiving);
-  const cars = setDateOfReceiving(carsData, dateOfReceiving);
+  const { user, isIncreased } = cookies;
+
+  if (Boolean(isIncreased)) {
+    nookies.destroy(null, 'isIncreased');
+  };
+
+  let userType = selectUserType(store.getState());
+  let userVisitCounts = selectUserVisitCounts(store.getState());
+  let newsData = {};
+  let discountsData = {};
+  let carsData = {};
 
   try {
-    const source = await fs.promises.readFile('./data/users.json', 'utf-8');
+    const source = await promises.readFile('./data/users.json', 'utf-8');
     const data = source ? JSON.parse(source) : [];
-    const user = getCurrentUser(data, userId);
-    data[user].visitCount++;
-    userVisitCounts = data[user].visitCount;
+    const currentUser = getCurrentUser(data, user);
+    data[currentUser].visitCount++;
+    userVisitCounts = data[currentUser].visitCount;
     userType = getUserType(userVisitCounts);
 
-    await fs.promises.writeFile('./data/users.json', JSON.stringify(data, null, 4))
+    await promises.writeFile('./data/users.json', JSON.stringify(data, null, 4));
+
+    newsData = getParsedFile(await promises.readFile('./data/news.json', 'utf-8'));
+    discountsData = getParsedFile(await promises.readFile('./data/discounts.json', 'utf-8'));
+    carsData = getParsedFile(await promises.readFile('./data/cars.json', 'utf-8'));
+
+    setDateOfReceiving(promises, newsData, './data/news.json');
+    setDateOfReceiving(promises, discountsData, './data/discounts.json');
+    setDateOfReceiving(promises, carsData, './data/cars.json');
+
   } catch (error) {
       console.error(error.message)
   }
 
-  store.dispatch(userActions.setVisitCounts({
-    userVisitCounts
-  }));
+  store.dispatch(userActions.fillUser(user));
+  store.dispatch(userActions.setVisitCounts(userVisitCounts));
+  
+  let initialReduxState = {};
 
-  store.dispatch(userActions.setUserType({
-    userType
-  }));
+  if ('isIncreased' in cookies) {
+    initialReduxState = {
+      user: {
+        userId: selectUserId(store.getState()),
+        userVisitCounts: selectUserVisitCounts(store.getState()),
+      }
+    };
+  } else {
+    store.dispatch(userActions.setUserType(userType));
 
-  const initialReduxState = store.getState();
+    initialReduxState = {
+      user: {
+        userId: selectUserId(store.getState()),
+        userVisitCounts: selectUserVisitCounts(store.getState()),
+        userType: selectUserType(store.getState()),
+      }
+    };
+  }
 
   return {
     props: {
       initialReduxState,
-      news,
-      discounts,
-      cars
+      newsData,
+      discountsData,
+      carsData,
     }
   }
 }
 
-const Dashboard = (props) => {
-  const {
-    initialReduxState,
-    news,
-    discounts,
-    cars
-  } = props;
-
-  console.log('dashboard', initialReduxState);
-
-  const initialUserVisitCounts = initialReduxState.user.userVisitCounts;
-  const initialUserType = initialReduxState.user.userType;
-  const dispatch = useDispatch();
-  dispatch(userActions.setUserType({ userVisitCounts: initialUserVisitCounts }));
-  dispatch(userActions.setVisitCounts({ userType: initialUserType }));
-
-  const { user } = useSelector((state) => state);
-
-  const guestJSX = user.userType === UserType.GUEST && (
-    <News data={news} />
-  );
-
-  const friendJSX = user.userType === UserType.FRIEND && (
-    <>
-      <News data={news} />
-      <Discounts data={discounts} />
-    </>
-  );
-
-  const famJSX = user.userType === UserType.FAM && (
-    <>
-      <News data={news} />
-      <Discounts data={discounts} />
-      <Cars data={cars} />
-    </>
-  );
+const Dashboard = ({initialReduxState}) => {
 
   return (
     <>
       <Menu />
       <UserComponent />
-      { guestJSX }
-      { friendJSX }
-      { famJSX }
+      <h1>Dashboard</h1>
+      <ol>
+        <li>
+          <Link href='/news'>
+            <a>News</a>
+          </Link>
+        </li>
+        <li>
+          <Link href='/discounts'>
+            <a>Discounts</a>
+          </Link>
+        </li>
+        <li>
+          <Link href='/cars'>
+            <a>Cars</a>
+          </Link>
+        </li>
+      </ol>
     </>
   )
 }

@@ -1,36 +1,48 @@
+// Core
 import nookies from 'nookies';
 import fs from 'fs';
+// Components
 import Menu from '../components/menu/menu';
 import Message from '../components/message/message';
 import UserComponent from '../components/user-component/user-component';
-import { USER_COOKIE_NAME, UserType } from '../const/const';
-import { getUniqueId, getCurrentUser, getUserType } from '../helpers/common';
+// Reducer
+import { userActions } from "../bus/user/actions";
+import { selectUserId, selectUserVisitCounts, selectUserType } from "../bus/user/selectors";
 import { initializeStore } from '../init/store';
 import { initialDispatcher } from '../init/initialDispatcher';
-import { useDispatch } from "react-redux";
-import { userActions } from "../bus/user/actions";
+import { USER_COOKIE_NAME } from '../const/const';
+// Helpers
+import { getUniqueId, getCurrentUser, getUserType } from '../helpers/common';
 
 export const getServerSideProps = async (context) => {
-  const store = await initialDispatcher(context, initializeStore());
-  const cookies = nookies.get(context);
-  const userId = USER_COOKIE_NAME in cookies ? cookies.userId : null;
-  let userUniqueId = 0;
-  let userType = UserType.GUEST;
-  let userVisitCounts = 1;
+  console.log('getServerSideProps: Home');
 
-  if (userId) {
+  const store = await initialDispatcher(context, initializeStore());  
+  const cookies = nookies.get(context);
+  const { user, isIncreased } = cookies;
+  
+  if (Boolean(isIncreased)) {
+    nookies.destroy(context, 'isIncreased');
+  };
+
+  let userUniqueId = selectUserId(store.getState());
+  let userVisitCounts = selectUserVisitCounts(store.getState());
+  let userType = selectUserType(store.getState());
+
+  if (user) {
     try {
       const source = await fs.promises.readFile('./data/users.json', 'utf-8');
       const data = source ? JSON.parse(source) : [];
-      const user = getCurrentUser(data, userId);
+      const currentUser = getCurrentUser(data, user);
 
-      if (user >= 0) {
-        data[user].visitCount++;
-        userVisitCounts = data[user].visitCount;
-        userUniqueId = data[user].id;
+      if (currentUser >= 0) {
+        data[currentUser].visitCount++;
+        console.log('data[currentUser]', data[currentUser]);
+        userVisitCounts = data[currentUser].visitCount;
+        userUniqueId = data[currentUser].id;
         userType = getUserType(userVisitCounts);
       } else {
-        data.push({ id: parseInt(userId), visitCount: userVisitCounts });
+        data.push({ id: parseInt(user), visitCount: userVisitCounts });
       }
 
       await fs.promises.writeFile('./data/users.json', JSON.stringify(data, null, 4))
@@ -53,19 +65,31 @@ export const getServerSideProps = async (context) => {
     }
   }
 
-  store.dispatch(userActions.fillUser({
-    userId: userUniqueId
-  }));
+  store.dispatch(userActions.fillUser(userUniqueId));
+  store.dispatch(userActions.setVisitCounts(userVisitCounts));
 
-  store.dispatch(userActions.setVisitCounts({
-    userVisitCounts
-  }));
+  let initialReduxState = {};
 
-  store.dispatch(userActions.setUserType({
-    userType
-  }));
+  if ('isIncreased' in cookies) {
+    initialReduxState = {
+      user: {
+        userId: selectUserId(store.getState()),
+        userVisitCounts: selectUserVisitCounts(store.getState()),
+      }
+    };
+  } else {
+    store.dispatch(userActions.setUserType(userType));
 
-  const initialReduxState = store.getState();
+    initialReduxState = {
+      user: {
+        userId: selectUserId(store.getState()),
+        userVisitCounts: selectUserVisitCounts(store.getState()),
+        userType: selectUserType(store.getState()),
+      }
+    };
+  }
+  
+  console.log('getServerSideProps: Home will sent to APP ', initialReduxState);
   
   return {
     props: {
@@ -74,19 +98,8 @@ export const getServerSideProps = async (context) => {
   }
 }
 
-const Home = (props) => {
-  const {
-    initialReduxState,
-  } = props;
-
-  console.log('index', initialReduxState);
-  const initialUserId = initialReduxState.user.userId;
-  const initialUserVisitCounts = initialReduxState.user.userVisitCounts;
-  const initialUserType = initialReduxState.user.userType;
-  const dispatch = useDispatch();
-  dispatch(userActions.fillUser({ userId: initialUserId }));
-  dispatch(userActions.setUserType({ userVisitCounts: initialUserVisitCounts }));
-  dispatch(userActions.setVisitCounts({ userType: initialUserType }));
+const Home = ({initialReduxState}) => {
+  console.log('Home Page');
 
   return (
     <>
