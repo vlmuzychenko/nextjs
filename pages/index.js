@@ -1,99 +1,110 @@
 // Core
 import nookies from 'nookies';
 import fs from 'fs';
-// Components
+import * as R from 'ramda';
+// Components 
 import Menu from '../components/menu/menu';
 import Message from '../components/message/message';
-import UserComponent from '../components/user-component/user-component';
+import AsteroidsComponent from '../components/asteroids-component/asteroids-component';
+import PokemonsComponent from '../components/pokemons-component/pokemons-component';
 // Reducer
 import { userActions } from "../bus/user/actions";
+import { asteroidsActions } from "../bus/asteroids/actions";
 import { selectUserId, selectUserVisitCounts, selectUserType } from "../bus/user/selectors";
+import { selectAsteroidsEntries } from "../bus/asteroids/selectors";
 import { initializeStore } from '../init/store';
 import { initialDispatcher } from '../init/initialDispatcher';
-import { USER_COOKIE_NAME } from '../const/const';
 // Helpers
-import { getUniqueId, getCurrentUser, getUserType } from '../helpers/common';
+import { getCurrentUser, getUserType, serverDispatch, disableSaga } from '../helpers/common';
+//Other
+import { initApollo } from "../init/initApollo";
+import queryPokemons from '../bus/pokemons/hooks/usePokemons/gql/queryPokemons.graphql';
 
 export const getServerSideProps = async (context) => {
   console.log('getServerSideProps: Home');
 
-  const store = await initialDispatcher(context, initializeStore());  
+  const { store, stateUpdates } = await initialDispatcher(context, initializeStore());
+  const initialApolloState = await initApollo(context, async (execute) => {
+    await execute({
+      query: queryPokemons,
+    });
+  });  
   const cookies = nookies.get(context);
-  const { user, isIncreased } = cookies;
+  const { isIncreased } = cookies;
   
   if (Boolean(isIncreased)) {
     nookies.destroy(context, 'isIncreased');
   };
 
-  let userUniqueId = selectUserId(store.getState());
+  const userUniqueId = selectUserId(store.getState());
   let userVisitCounts = selectUserVisitCounts(store.getState());
   let userType = selectUserType(store.getState());
 
-  if (user) {
-    try {
-      const source = await fs.promises.readFile('./data/users.json', 'utf-8');
-      const data = source ? JSON.parse(source) : [];
-      const currentUser = getCurrentUser(data, user);
+  try {
+    const source = await fs.promises.readFile('./data/users.json', 'utf-8');
+    const data = source ? JSON.parse(source) : [];
+    const currentUser = getCurrentUser(data, userUniqueId);
 
-      if (currentUser >= 0) {
-        data[currentUser].visitCount++;
-        console.log('data[currentUser]', data[currentUser]);
-        userVisitCounts = data[currentUser].visitCount;
-        userUniqueId = data[currentUser].id;
-        userType = getUserType(userVisitCounts);
-      } else {
-        data.push({ id: parseInt(user), visitCount: userVisitCounts });
-      }
-
-      await fs.promises.writeFile('./data/users.json', JSON.stringify(data, null, 4))
-    } catch (error) {
-        console.error(error.message)
-    }
-  } else {
-    userType = getUserType(userVisitCounts);
-    userUniqueId = getUniqueId();
-    nookies.set(context, USER_COOKIE_NAME, userUniqueId);
-
-    try {
-      const source = await fs.promises.readFile('./data/users.json', 'utf-8');
-      const data = source ? JSON.parse(source) : [];
+    if (currentUser >= 0) {
+      data[currentUser].visitCount++;
+      userVisitCounts = data[currentUser].visitCount;
+      userType = getUserType(userVisitCounts);
+    } else {
       data.push({ id: userUniqueId, visitCount: userVisitCounts });
-
-      await fs.promises.writeFile('./data/users.json', JSON.stringify(data, null, 4))
-    } catch (error) {
-        console.error(error.message)
     }
+
+    await fs.promises.writeFile('./data/users.json', JSON.stringify(data, null, 4))
+  } catch (error) {
+      console.error(error.message)
   }
 
-  store.dispatch(userActions.fillUser(userUniqueId));
-  store.dispatch(userActions.setVisitCounts(userVisitCounts));
+  await serverDispatch(store, (dispatch) => {
+    dispatch(userActions.setVisitCounts(userVisitCounts));
+    dispatch(asteroidsActions.loadAsteroidsAsync());
+  });
 
-  let initialReduxState = {};
+  await disableSaga(store);
+
+  let currentPageReduxState = {};
 
   if ('isIncreased' in cookies) {
-    initialReduxState = {
+    currentPageReduxState = {
       user: {
-        userId: selectUserId(store.getState()),
         userVisitCounts: selectUserVisitCounts(store.getState()),
-      }
+      },
+      asteroids: {
+        entries: selectAsteroidsEntries(store.getState()),
+      },
+  
     };
   } else {
-    store.dispatch(userActions.setUserType(userType));
+    await serverDispatch(store, (dispatch) => {
+      dispatch(userActions.setUserType(userType));
+    });
 
-    initialReduxState = {
+    currentPageReduxState = {
       user: {
-        userId: selectUserId(store.getState()),
         userVisitCounts: selectUserVisitCounts(store.getState()),
         userType: selectUserType(store.getState()),
-      }
+      },
+      asteroids: {
+        entries: selectAsteroidsEntries(store.getState()),
+      },
     };
   }
+
+  const initialReduxState = R.mergeDeepRight( 
+    stateUpdates,
+    currentPageReduxState
+  );
+
   
   console.log('getServerSideProps: Home will sent to APP ', initialReduxState);
   
   return {
     props: {
       initialReduxState,
+      initialApolloState,
     }
   }
 }
@@ -104,8 +115,9 @@ const Home = ({initialReduxState}) => {
   return (
     <>
       <Menu />
-      <UserComponent />
       <Message />
+      <AsteroidsComponent />
+      <PokemonsComponent />
     </>
     
   )

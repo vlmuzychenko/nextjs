@@ -53,3 +53,19 @@ export const getSlugIndex = (data, slug) => {
     }
   });
 }
+
+export const serverDispatch = async (store, execute) => {
+  const { dispatch } = store;
+
+  execute(dispatch);
+};
+
+import { END } from 'redux-saga';
+export const disableSaga = async (store) => {
+  const { dispatch } = store;
+
+  dispatch(END);
+
+  await store.sagaTask.toPromise();
+};
+

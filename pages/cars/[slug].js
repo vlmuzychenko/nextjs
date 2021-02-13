@@ -1,27 +1,26 @@
 //Core
 import fs from 'fs';
-import nookies from 'nookies';
+import * as R from 'ramda';
 //Redux
 import { initialDispatcher } from '../../init/initialDispatcher';
 import { initializeStore } from '../../init/store';
 import { carsActions } from '../../bus/cars/actions';
 import { selectCars } from '../../bus/cars/selectors';
 import { userActions } from '../../bus/user/actions';
-import { selectUserType } from '../../bus/user/selectors';
+import { selectUserId, selectUserType } from '../../bus/user/selectors';
 //Components
 import BackLink from '../../components/back-link/back-link';
 import CarComponent from '../../components/car-component/car-component';
 //Helpers
-import { getParsedFile, getSlugIndex, getUserType, getCurrentUser } from '../../helpers/common';
+import { getParsedFile, getSlugIndex, getUserType, getCurrentUser, serverDispatch } from '../../helpers/common';
 // Consts
 import { UserType } from '../../const/const';
 
 export const getServerSideProps = async (context) => {
-  const store = await initialDispatcher(context, initializeStore());
+  const { store, stateUpdates } = await initialDispatcher(context, initializeStore());
 
   const promises = fs.promises;
-  const cookies = nookies.get(context);
-  const { user } = cookies;
+  const user = selectUserId(store.getState());
 
   let carsData = {};
 
@@ -37,10 +36,11 @@ export const getServerSideProps = async (context) => {
   const userVisitCounts = data[currentUser].visitCount;
   const userType = getUserType(userVisitCounts);
 
-  store.dispatch(userActions.fillUser({user}));
-  store.dispatch(userActions.setVisitCounts({userVisitCounts}));
-  store.dispatch(userActions.setUserType({userType}));
-  store.dispatch(carsActions.fillCars(carsData));
+  await serverDispatch(store, (dispatch) => {
+    dispatch(userActions.setVisitCounts({userVisitCounts}));
+    dispatch(userActions.setUserType({userType}));
+    dispatch(carsActions.fillCars(carsData));
+  });
 
   const initialCars = selectCars(store.getState());
   const slug = context.query.slug;
@@ -64,9 +64,14 @@ export const getServerSideProps = async (context) => {
     }
   }
 
-  const initialReduxState = {
+  const currentPageReduxState = {
     cars: initialCars,
   };
+
+  const initialReduxState = R.mergeDeepRight( 
+    stateUpdates,
+    currentPageReduxState
+  );
 
   return {
     props: {

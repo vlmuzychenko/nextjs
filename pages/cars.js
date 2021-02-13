@@ -1,27 +1,27 @@
 // Core
 import fs from 'fs';
-import nookies from 'nookies';
+import * as R from 'ramda';
 // Reducer
 import { initialDispatcher } from "../init/initialDispatcher";
 import { initializeStore } from "../init/store";
 import { carsActions } from '../bus/cars/actions';
 import { selectCars } from '../bus/cars/selectors';
-import { selectUserType } from '../bus/user/selectors'; 
+import { selectUserId, selectUserType } from '../bus/user/selectors'; 
 import { userActions } from '../bus/user/actions';
 // Helpers
-import { setDateOfReceiving, getParsedFile, getCurrentUser, getUserType } from '../helpers/common';
+import { setDateOfReceiving, getParsedFile, getCurrentUser, getUserType, serverDispatch } from '../helpers/common';
 // Components
 import CarsComponent from '../components/cars-component/cars-component';
+import Menu from '../components/menu/menu';
 // Consts
 import { UserType } from '../const/const';
 
 
 export const getServerSideProps = async (context) => {
-  const store = await initialDispatcher(context, initializeStore());
+  const { store, stateUpdates } = await initialDispatcher(context, initializeStore());
 
   const promises = fs.promises;
-  const cookies = nookies.get(context);
-  const { user } = cookies;
+  const user = selectUserId(store.getState());
 
   let carsData = {};
 
@@ -39,10 +39,11 @@ export const getServerSideProps = async (context) => {
   const userVisitCounts = data[currentUser].visitCount;
   const userType = getUserType(userVisitCounts);
 
-  store.dispatch(userActions.fillUser({user}));
-  store.dispatch(userActions.setVisitCounts({userVisitCounts}));
-  store.dispatch(userActions.setUserType({userType}));
-  store.dispatch(carsActions.fillCars(carsData));
+  await serverDispatch(store, (dispatch) => {
+    dispatch(userActions.setVisitCounts({userVisitCounts}));
+    dispatch(userActions.setUserType({userType}));
+    dispatch(carsActions.fillCars(carsData));
+  });
 
   const initialUserType = selectUserType(store.getState());
 
@@ -54,9 +55,14 @@ export const getServerSideProps = async (context) => {
     }
   }
 
-  const initialReduxState = {
+  const currentPageReduxState = {
     cars: selectCars(store.getState()),
   };
+
+  const initialReduxState = R.mergeDeepRight( 
+    stateUpdates,
+    currentPageReduxState
+  );
 
   return {
     props: {
@@ -70,6 +76,7 @@ const Cars = (props) => {
 
   return (
     <>
+      <Menu />
       <h1>Cars</h1>
       <CarsComponent/>
     </>
