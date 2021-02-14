@@ -2,28 +2,29 @@
 import fs from 'fs';
 import nookies from 'nookies';
 import Link from 'next/link';
+import * as R from 'ramda';
 // Components
 import Menu from '../components/menu/menu';
-import UserComponent from '../components/user-component/user-component';
 // Reducer
 import { userActions } from "../bus/user/actions";
 import { selectUserId, selectUserVisitCounts, selectUserType } from "../bus/user/selectors";
 import { initializeStore } from '../init/store';
 import { initialDispatcher } from '../init/initialDispatcher';
 // Helpers
-import { setDateOfReceiving, getCurrentUser, getUserType, getParsedFile } from '../helpers/common';
+import { setDateOfReceiving, getCurrentUser, getUserType, getParsedFile, serverDispatch } from '../helpers/common';
 
 export const getServerSideProps = async (context) => {
-  const store = await initialDispatcher(context, initializeStore());
+  const { store, stateUpdates } = await initialDispatcher(context, initializeStore());
 
   const promises = fs.promises;
   const cookies = nookies.get(context);
-  const { user, isIncreased } = cookies;
+  const { isIncreased } = cookies;
 
   if (Boolean(isIncreased)) {
     nookies.destroy(null, 'isIncreased');
   };
 
+  const user = selectUserId(store.getState());
   let userType = selectUserType(store.getState());
   let userVisitCounts = selectUserVisitCounts(store.getState());
   let newsData = {};
@@ -52,29 +53,35 @@ export const getServerSideProps = async (context) => {
       console.error(error.message)
   }
 
-  store.dispatch(userActions.fillUser(user));
-  store.dispatch(userActions.setVisitCounts(userVisitCounts));
+  await serverDispatch(store, (dispatch) => {
+    dispatch(userActions.setVisitCounts(userVisitCounts));
+  });
   
-  let initialReduxState = {};
+  let currentPageReduxState = {};
 
   if ('isIncreased' in cookies) {
-    initialReduxState = {
+    currentPageReduxState = {
       user: {
-        userId: selectUserId(store.getState()),
         userVisitCounts: selectUserVisitCounts(store.getState()),
       }
     };
   } else {
-    store.dispatch(userActions.setUserType(userType));
+    await serverDispatch(store, (dispatch) => {
+      dispatch(userActions.setUserType(userType));
+    });
 
-    initialReduxState = {
+    currentPageReduxState = {
       user: {
-        userId: selectUserId(store.getState()),
         userVisitCounts: selectUserVisitCounts(store.getState()),
         userType: selectUserType(store.getState()),
       }
     };
   }
+
+  const initialReduxState = R.mergeDeepRight( 
+    stateUpdates,
+    currentPageReduxState
+  );
 
   return {
     props: {
@@ -91,7 +98,6 @@ const Dashboard = ({initialReduxState}) => {
   return (
     <>
       <Menu />
-      <UserComponent />
       <h1>Dashboard</h1>
       <ol>
         <li>

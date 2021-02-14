@@ -1,24 +1,24 @@
 // Core
 import fs from 'fs';
-import nookies from 'nookies';
+import * as R from 'ramda';
 // Reducer
 import { initialDispatcher } from "../init/initialDispatcher";
 import { initializeStore } from "../init/store";
 import { newsActions } from '../bus/news/actions';
 import { selectNews } from '../bus/news/selectors';
 import { userActions } from '../bus/user/actions';
-import { selectUserType } from '../bus/user/selectors';
+import { selectUserId } from '../bus/user/selectors';
 // Helpers
-import { setDateOfReceiving, getParsedFile, getCurrentUser, getUserType } from '../helpers/common';
+import { setDateOfReceiving, getParsedFile, getCurrentUser, getUserType, serverDispatch } from '../helpers/common';
 // Components
 import NewsComponent from '../components/news-component/news-component';
+import Menu from '../components/menu/menu';
 
 export const getServerSideProps = async (context) => {
-  const store = await initialDispatcher(context, initializeStore());
+  const { store, stateUpdates }  = await initialDispatcher(context, initializeStore());
 
   const promises = fs.promises;
-  const cookies = nookies.get(context);
-  const { user } = cookies;
+  const user = selectUserId(store.getState());
 
   let newsData = {};
 
@@ -36,25 +36,20 @@ export const getServerSideProps = async (context) => {
   const userVisitCounts = data[currentUser].visitCount;
   const userType = getUserType(userVisitCounts);
 
-  store.dispatch(userActions.fillUser({user}));
-  store.dispatch(userActions.setVisitCounts({userVisitCounts}));
-  store.dispatch(userActions.setUserType({userType}));
-  store.dispatch(newsActions.fillNews(newsData));
+  await serverDispatch(store, (dispatch) => {
+    dispatch(userActions.setVisitCounts({userVisitCounts}));
+    dispatch(userActions.setUserType({userType}));
+    dispatch(newsActions.fillNews(newsData));
+  });
 
-  const initialUserType = selectUserType(store.getState());
-
-  // if (initialUserType !== UserType.FAM && initialUserType !== UserType.FRIEND && initialUserType !== UserType.GUEST) {
-  //   console.log('12345');
-  //   return {
-  //     redirect: {
-  //       destination: '/',
-  //     }
-  //   }
-  // }
-
-  const initialReduxState = {
+  const currentPageReduxState = {
     news: selectNews(store.getState()),
   };
+
+  const initialReduxState = R.mergeDeepRight( 
+    stateUpdates,
+    currentPageReduxState
+  );
 
   return {
     props: {
@@ -66,6 +61,7 @@ export const getServerSideProps = async (context) => {
 const News = (props) => {
   return (
     <>
+      <Menu />
       <h1>News</h1>
       <NewsComponent />
     </>
