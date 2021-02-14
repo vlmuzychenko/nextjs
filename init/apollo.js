@@ -1,18 +1,17 @@
 // Core
 import { useMemo } from 'react';
-import {
-  ApolloClient,
-  ApolloLink,
-  createHttpLink,
-  InMemoryCache,
-} from '@apollo/client';
+import { ApolloClient, ApolloLink, createHttpLink, InMemoryCache } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
 import fetch from 'isomorphic-unfetch';
 import apolloLogger from 'apollo-link-logger';
 
+// Other
+import { browserVerify, environmentVerify } from '../helpers/common';
+
 let apolloClient;
 
-const isBrowser = typeof window !== 'undefined';
+const isBrowser = browserVerify();
+const { isDevelopment } = environmentVerify();
 
 function createApolloClient(context) {
   const httpLink = createHttpLink({
@@ -38,7 +37,7 @@ function createApolloClient(context) {
       httpLink,
     ];
 
-    if (isBrowser) {
+    if (isBrowser && isDevelopment) {
       links.unshift(apolloLogger);
     }
 
