@@ -21,7 +21,7 @@ import { initApollo } from "../init/initApollo";
 import queryPokemons from '../bus/pokemons/hooks/usePokemons/gql/queryPokemons.graphql';
 
 export const getServerSideProps = async (context) => {
-  console.log('getServerSideProps: Home');
+  // console.log('getServerSideProps: Home');
 
   const { store, stateUpdates } = await initialDispatcher(context, initializeStore());
   const initialApolloState = await initApollo(context, async (execute) => {
@@ -99,7 +99,7 @@ export const getServerSideProps = async (context) => {
   );
 
   
-  console.log('getServerSideProps: Home will sent to APP ', initialReduxState);
+  // console.log('getServerSideProps: Home will sent to APP ', initialReduxState);
   
   return {
     props: {
@@ -110,7 +110,7 @@ export const getServerSideProps = async (context) => {
 }
 
 const Home = ({initialReduxState}) => {
-  console.log('Home Page');
+  // console.log('Home Page');
 
   return (
     <>

@@ -5,7 +5,7 @@ import { selectUserId, selectUserVisitCounts, selectUserType } from "../../bus/u
 import { updateUserType } from '../../helpers/common';
 
 const UserComponent = () => {
-  console.log('User Component');
+  // console.log('User Component');
   const dispatch = useDispatch();
   const userId = useSelector(selectUserId);
   const userVisitCounts = useSelector(selectUserVisitCounts);

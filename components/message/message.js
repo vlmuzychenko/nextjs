@@ -4,7 +4,7 @@ import { UserType } from '../../const/const';
 const Message = (props) => {
   const {} = props;
   const { user } = useSelector((state) => state);
-  console.log('message', user);
+  // console.log('message', user);
 
   const guestJSX = user.userType === UserType.GUEST && (
     <h1>Приветствуем тебя странник!</h1>
