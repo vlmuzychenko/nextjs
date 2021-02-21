@@ -23,7 +23,6 @@ const Message = (props) => {
       { guestJSX }
       { friendJSX }
       { famJSX }
-      { user.userType }
     </>
   )
 }
