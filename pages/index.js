@@ -7,6 +7,7 @@ import Menu from '../components/menu/menu';
 import Message from '../components/message/message';
 import AsteroidsComponent from '../components/asteroids-component/asteroids-component';
 import PokemonsComponent from '../components/pokemons-component/pokemons-component';
+import { Cats } from '../bus/cats/catsComponent';
 // Reducer
 import { userActions } from "../bus/user/actions";
 import { asteroidsActions } from "../bus/asteroids/actions";
@@ -118,6 +119,7 @@ const Home = ({initialReduxState}) => {
       <Message />
       <AsteroidsComponent />
       <PokemonsComponent />
+      <Cats />
     </>
     
   )

@@ -2,16 +2,16 @@
     {
         "id": "N-1",
         "content": "Вчера на шоссе 666 был убит человек",
-        "dateOfReceiving": "Sun Feb 14 2021 00:03:43 GMT+0200 (Eastern European Standard Time)"
+        "dateOfReceiving": "Wed Feb 17 2021 20:58:27 GMT+0200 (Eastern European Standard Time)"
     },
     {
         "id": "N-2",
         "content": "Сегодня утром на шоссе 123 была угнана бетономешалка",
-        "dateOfReceiving": "Sun Feb 14 2021 00:03:43 GMT+0200 (Eastern European Standard Time)"
+        "dateOfReceiving": "Wed Feb 17 2021 20:58:27 GMT+0200 (Eastern European Standard Time)"
     },
     {
         "id": "N-3",
         "content": "В понедельник вечером на шоссе 777 было своершено сверское убийство. Полиция подозревает Алладина",
-        "dateOfReceiving": "Sun Feb 14 2021 00:03:43 GMT+0200 (Eastern European Standard Time)"
+        "dateOfReceiving": "Wed Feb 17 2021 20:58:27 GMT+0200 (Eastern European Standard Time)"
     }
 ]
