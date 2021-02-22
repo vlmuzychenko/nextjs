@@ -10,6 +10,8 @@ import { selectUserId } from '../user/selectors';
 import { getUniqueId } from '../../helpers/common';
 // Instruments
 import { environmentVerify } from '../../helpers/common';
+//Styles
+import styles from './styles.module.scss';
 
 export const Cats = () => {
   const dispatch = useDispatch();
@@ -41,15 +43,17 @@ export const Cats = () => {
   }, []);
 
   const entriesJSX = entries && entries.map(({_id, text}) => (
-    <p key={_id}>
+    <li key={_id}>
       {text}
-    </p>
+    </li>
   ));
 
   return (
-    <>
+    <section className={styles.cats}>
       <h1>Cats</h1>
-      {entriesJSX}
-    </>
+      <ul className={styles.list}>
+        {entriesJSX}
+      </ul>
+    </section>
   )
 }
