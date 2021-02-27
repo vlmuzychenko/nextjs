@@ -1,5 +1,6 @@
 // Core
 import fs from 'fs';
+import path from 'path'
 import * as R from 'ramda';
 // Reducer
 import { initialDispatcher } from "../init/initialDispatcher";
@@ -23,15 +24,15 @@ export const getServerSideProps = async (context) => {
   let newsData = {};
 
   try {
-    newsData = getParsedFile(await promises.readFile('./data/news.json', 'utf-8'));
+    newsData = getParsedFile(await promises.readFile(path.resolve('./data/', 'news.json'), 'utf-8'));
 
-    setDateOfReceiving(promises, newsData, './data/news.json');
+    setDateOfReceiving(promises, newsData, path.resolve('./data/', 'news.json'));
   }
   catch (error) {
     console.error(error);
   }
 
-  const data = getParsedFile(await promises.readFile('./data/users.json', 'utf-8'));
+  const data = getParsedFile(await promises.readFile(path.resolve('./data/', 'news.json'), 'utf-8'));
   const currentUser = getCurrentUser(data, user);
   const userVisitCounts = data[currentUser].visitCount;
   const userType = getUserType(userVisitCounts);
